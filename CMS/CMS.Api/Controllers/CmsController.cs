@@ -13,7 +13,7 @@ public class CmsController(
     [HttpPost("events")]
     public async Task<IActionResult> PostEvents(PostEventsRequest request, CancellationToken cancellationToken)
     {
-        var result = await eventService.ProcessAsync(request, cancellationToken);
+        var result = await eventService.IngestEventsAsync(request, cancellationToken);
 
         if (result.IsFailed)
             return BadRequest(result.Errors);

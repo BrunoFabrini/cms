@@ -5,8 +5,8 @@ namespace CMS.Domain.Entities;
 
 public class EventEntity : EntityBase
 {
-    public string Payload { get; set; } = null!;
+    public string Payload { get; set; } = default!;
     public EventStatus Status { get; set; }
-    public string ErrorMessage { get; set; } = string.Empty;
+    public string ErrorMessage { get; set; } = default!;
     public DateTimeOffset? LastProcessedAtDateTime { get; set; }
 }

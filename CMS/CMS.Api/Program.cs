@@ -8,7 +8,7 @@ builder.Services.AddOpenApi();
 
 builder.Services
     .AddApplication(builder.Configuration)
-    .AddInfrastructure();
+    .AddInfrastructure(builder.Configuration);
 
 var app = builder.Build();
 

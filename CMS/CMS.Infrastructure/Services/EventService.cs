@@ -1,21 +1,29 @@
 ﻿using CMS.Application.Features.CmsEvents;
+using CMS.Application.Models;
 using CMS.Application.Services;
 using CMS.Domain.Entities;
 using CMS.Domain.Enums;
 using CMS.Domain.Repositories.Events;
 using FluentResults;
+using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
 
 namespace CMS.Infrastructure.Services;
 
 internal class EventService(
-    IEventWriteRepository eventWriteRepository
+    IEventWriteRepository eventWriteRepository,
+    IEventReadRepository eventReadRepository,
+    IContentManagementService contentManagementService,
+    ILogger logger
 ) : IEventService
 {
     private readonly IEventWriteRepository _eventWriteRepository = eventWriteRepository;
+    private readonly IEventReadRepository _eventReadRepository = eventReadRepository;
+    private readonly IContentManagementService _contentManagementService = contentManagementService;
+    private readonly ILogger _logger = logger;
 
-    public async Task<Result> ProcessAsync(PostEventsRequest request, CancellationToken cancellationToken)
+    public async Task<Result> IngestEventsAsync(PostEventsRequest request, CancellationToken cancellationToken)
     {
         var serializedEvents = await Task.WhenAll(
             request.Select(async cmsEvent =>
@@ -45,9 +53,83 @@ internal class EventService(
         return Result.Ok();
     }
 
-    private Result ValidateEvents(PostEventsRequest request)
+    public async Task<Result> ProcessEventsAsync(ProcessEventsArgs args, CancellationToken cancellationToken)
     {
-        //TODO - Validation will occur on event processing
+        var errorCutOffDateTime = DateTimeOffset.UtcNow.AddMinutes(-args.ErrorCutoffTimeInMinutes);
+
+        var getPendingEventsResult = await _eventReadRepository.GetPendingEventsAsync(
+            args.BatchSize,
+            args.ErrorEventsRatio,
+            errorCutOffDateTime,
+            cancellationToken
+        );
+
+        if (getPendingEventsResult.IsFailed)
+            return Result.Fail(getPendingEventsResult.Errors);
+
+        foreach (var eventEntity in getPendingEventsResult.Value)
+        {
+            eventEntity.Status = EventStatus.Processing;
+
+            var processEventResult = await ProcessEventAsync(eventEntity, cancellationToken);
+
+            if (processEventResult.IsFailed)
+            {
+                eventEntity.Status = EventStatus.Error;
+                eventEntity.ErrorMessage = string.Join("; ", processEventResult.Errors.Select(e => e.Message));
+            }
+            else
+            {
+                eventEntity.Status = EventStatus.Processed;
+                eventEntity.ErrorMessage = string.Empty;
+            }
+
+            eventEntity.LastProcessedAtDateTime = DateTimeOffset.UtcNow;
+
+            var updateEventResult = await _eventWriteRepository.UpdateAsync(eventEntity, cancellationToken);
+
+            if (updateEventResult.IsFailed)
+                _logger.LogError($"Failed to update event with ID: {eventEntity.Id}. Errors: {string.Join("; ", updateEventResult.Errors.Select(e => e.Message))}");
+        }
+
         return Result.Ok();
+    }
+
+    private async Task<Result> ProcessEventAsync(EventEntity eventEntity, CancellationToken cancellationToken)
+    {
+        try
+        {
+            _logger.LogInformation($"Processing event with ID: {eventEntity.Id}");
+
+            //TODO - Reuse global json serializer
+            var cmsEvent = JsonSerializer.Deserialize<CmsEvent>(eventEntity.Payload);
+
+            if (cmsEvent == null)
+                return Result.Fail("Event payload is null.");
+
+            var updateContentResult = await _contentManagementService.PublishContentAsync(cmsEvent, cancellationToken);
+
+            if (updateContentResult.IsFailed)
+            {
+                _logger.LogError($"Failed to update content from event with ID: {eventEntity.Id}. Errors: {string.Join("; ", updateContentResult.Errors.Select(e => e.Message))}");
+                return Result.Fail(updateContentResult.Errors);
+            }
+
+            _logger.LogInformation($"Successfully processed event with ID: {eventEntity.Id}");
+
+            return Result.Ok();
+        }
+        catch (JsonException ex)
+        {
+            var errorMessage = $"Serialization failed for event payload with ID: {eventEntity.Id}.";
+            _logger.LogError(ex, errorMessage);
+            return Result.Fail(errorMessage);
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = $"Failed to process event with ID: {eventEntity.Id}.";
+            _logger.LogError(ex, errorMessage);
+            return Result.Fail(errorMessage);
+        }
     }
 }

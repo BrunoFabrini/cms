@@ -1,8 +1,11 @@
-﻿namespace CMS.Application.Models;
+﻿using System.Text.Json.Serialization;
+
+namespace CMS.Application.Models;
 
 public class CmsEvent
 {
-    public string Id { get; set; } = null!;
+    [JsonPropertyName("Id")]
+    public string PublicId { get; set; } = null!;
 
     public string Type { get; set; } = null!;
 

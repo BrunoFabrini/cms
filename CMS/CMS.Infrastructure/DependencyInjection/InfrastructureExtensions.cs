@@ -1,6 +1,9 @@
 ﻿using CMS.Application.Services;
+using CMS.Domain.Repositories.Content;
 using CMS.Domain.Repositories.Events;
+using CMS.Infrastructure.Options;
 using CMS.Infrastructure.Persistence;
+using CMS.Infrastructure.Persistence.Repositories.Content;
 using CMS.Infrastructure.Persistence.Repositories.Events;
 using CMS.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
@@ -11,8 +14,9 @@ namespace CMS.Infrastructure.DependencyInjection;
 
 public static class InfrastructureExtensions
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddOptions(configuration);
         services.AddInfrastructureServices();
         services.AddApplicationServices();
 
@@ -25,6 +29,15 @@ public static class InfrastructureExtensions
     public static void AddApplicationServices(this IServiceCollection services)
     {
         services.AddScoped<IEventService, EventService>();
+        services.AddScoped<IContentManagementService, ContentManagementService>();
+
+        //TODO - CHeck if this should be scoped or singleton
+        services.AddScoped<IEventConsumerBackgroundService, EventConsumerBackgroundService>();
+    }
+
+    public static void AddOptions(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<EventConsumerOptions>(configuration.GetSection(EventConsumerOptions.SectionName));
     }
 
     public static void AddInfrastructureServices(this IServiceCollection services)
@@ -54,5 +67,6 @@ public static class InfrastructureExtensions
     {
         services.AddScoped<IEventReadRepository, EventReadRepository>();
         services.AddScoped<IEventWriteRepository, EventWriteRepository>();
+        services.AddScoped<IContentRepository, ContentRepository>();
     }
 }

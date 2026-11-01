@@ -27,28 +27,23 @@ partial class CmsDbContextModelSnapshot : ModelSnapshot
                 .HasColumnName("ContentId");
 
             b.Property<DateTimeOffset>("CreatedDateTime")
-                .HasColumnType("datetimeoffset");
+                .HasColumnType("datetimeoffset")
+                .HasDefaultValueSql("SYSDATETIMEOFFSET()");
+
+            b.Property<bool>("Enabled")
+                .HasColumnType("bit");
+
+            b.Property<string>("PublicId")
+                .IsRequired()
+                .HasColumnType("varchar(100)");
+
+            b.Property<bool>("Published")
+                .HasColumnType("bit");
 
             b.HasKey("Id")
                 .HasName("PK_Content_ContentId");
 
             b.ToTable("Contents");
-        });
-
-        modelBuilder.Entity("CMS.Domain.Entities.ContentDisabledEntity", b =>
-        {
-            b.Property<int?>("Id")
-                .ValueGeneratedOnAdd()
-                .HasColumnType("int")
-                .HasColumnName("ContentDisabledId");
-
-            b.Property<DateTimeOffset>("CreatedDateTime")
-                .HasColumnType("datetimeoffset");
-
-            b.HasKey("Id")
-                .HasName("PK_ContentDisabled_ContentDisabledId");
-
-            b.ToTable("ContentsDisabled");
         });
 
         modelBuilder.Entity("CMS.Domain.Entities.ContentVersionEntity", b =>
@@ -58,8 +53,29 @@ partial class CmsDbContextModelSnapshot : ModelSnapshot
                 .HasColumnType("int")
                 .HasColumnName("ContentVersionId");
 
+            b.Property<string>("Content")
+                .IsRequired()
+                .HasColumnType("varchar(max)");
+
+            b.Property<int>("ContentId")
+                .HasColumnType("int");
+
             b.Property<DateTimeOffset>("CreatedDateTime")
-                .HasColumnType("datetimeoffset");
+                .HasColumnType("datetimeoffset")
+                .HasDefaultValueSql("SYSDATETIMEOFFSET()");
+
+            b.Property<bool>("IsPublished")
+                .HasColumnType("bit");
+
+            b.Property<DateTimeOffset>("Timestamp")
+                .ValueGeneratedOnAdd()
+                .HasColumnType("datetimeoffset")
+                .HasDefaultValueSql("SYSDATETIMEOFFSET()");
+
+            b.Property<int>("VersionNumber")
+                .HasColumnType("int");
+
+            b.HasIndex("ContentId");
 
             b.HasKey("Id")
                 .HasName("PK_ContentVersion_ContentVersionId");
@@ -75,7 +91,8 @@ partial class CmsDbContextModelSnapshot : ModelSnapshot
                 .HasColumnName("ContentId");
 
             b.Property<DateTimeOffset>("CreatedDateTime")
-                .HasColumnType("datetimeoffset");
+                .HasColumnType("datetimeoffset")
+                .HasDefaultValueSql("SYSDATETIMEOFFSET()");
 
             b.Property<string>("ErrorMessage")
                 .IsRequired(false)
@@ -96,6 +113,22 @@ partial class CmsDbContextModelSnapshot : ModelSnapshot
                 .HasName("PK_Event_EventId");
 
             b.ToTable("Events");
+        });
+
+        modelBuilder.Entity("CMS.Domain.Entities.ContentVersionEntity", b =>
+        {
+            b.HasOne("CMS.Domain.Entities.ContentEntity", "ContentEntity")
+                .WithMany("ContentVersions")
+                .HasForeignKey("ContentId")
+                .OnDelete(DeleteBehavior.Cascade)
+                .IsRequired();
+
+            b.Navigation("ContentEntity");
+        });
+
+        modelBuilder.Entity("CMS.Domain.Entities.ContentEntity", b =>
+        {
+            b.Navigation("ContentVersions");
         });
     }
 }
