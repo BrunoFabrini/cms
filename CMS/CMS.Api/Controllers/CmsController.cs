@@ -18,6 +18,6 @@ public class CmsController(
         if (result.IsFailed)
             return BadRequest(result.Errors);
 
-        return Ok();
+        return Created();
     }
 }

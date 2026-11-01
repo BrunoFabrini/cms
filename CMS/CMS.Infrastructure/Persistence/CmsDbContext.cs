@@ -8,6 +8,7 @@ public class CmsDbContext(
     DbContextOptions<CmsDbContext> options
 ) : DbContext(options)
 {
+    public DbSet<EventEntity> Events { get; set; } = null!;
     public DbSet<ContentEntity> Contents { get; set; } = null!;
     public DbSet<ContentVersionEntity> ContentVersions { get; set; } = null!;
     public DbSet<ContentDisabledEntity> ContentsDisabled { get; set; } = null!;
@@ -15,6 +16,7 @@ public class CmsDbContext(
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.ApplyConfiguration(new EventEntityConfiguration());
         modelBuilder.ApplyConfiguration(new ContentEntityConfiguration());
         modelBuilder.ApplyConfiguration(new ContentVersionEntityConfiguration());
         modelBuilder.ApplyConfiguration(new ContentDisabledEntityConfiguration());

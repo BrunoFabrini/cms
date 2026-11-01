@@ -1,5 +1,7 @@
 ﻿using CMS.Application.Services;
+using CMS.Domain.Repositories.Events;
 using CMS.Infrastructure.Persistence;
+using CMS.Infrastructure.Persistence.Repositories.Events;
 using CMS.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -41,8 +43,16 @@ public static class InfrastructureExtensions
         });
     }
 
+    public static async Task ApplyMigrationsAsync(this IServiceProvider serviceProvider)
+    {
+        await using var scope = serviceProvider.CreateAsyncScope();
+        var dbContext = scope.ServiceProvider.GetRequiredService<CmsDbContext>();
+        await dbContext.Database.MigrateAsync();
+    }
+
     public static void AddRepositories(this IServiceCollection services)
     {
-        //services.AddScoped<IQueryContentRepository, QueryContentRepository>();
+        services.AddScoped<IEventReadRepository, EventReadRepository>();
+        services.AddScoped<IEventWriteRepository, EventWriteRepository>();
     }
 }
