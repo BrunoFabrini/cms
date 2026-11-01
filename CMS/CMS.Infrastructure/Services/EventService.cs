@@ -4,6 +4,7 @@ using CMS.Application.Services;
 using CMS.Domain.Entities;
 using CMS.Domain.Enums;
 using CMS.Domain.Repositories.Events;
+using CMS.Infrastructure.Utils;
 using FluentResults;
 using Serilog;
 using System.Text;
@@ -32,8 +33,7 @@ internal class EventService(
             {
                 using var stream = new MemoryStream();
 
-                //TODO 1 - Create global serialziation options and reuse here
-                await JsonSerializer.SerializeAsync(stream, cmsEvent);
+                await JsonSerializer.SerializeAsync(stream, cmsEvent, JsonConfigs.Default);
 
                 return Encoding.UTF8.GetString(stream.ToArray());
             })
@@ -107,20 +107,21 @@ internal class EventService(
         {
             _logger.Information("Processing event with ID: {EventId}", eventEntity.Id);
 
-            //TODO - Reuse global json serializer
-            var cmsEvent = JsonSerializer.Deserialize<CmsEvent>(eventEntity.Payload);
+            var cmsEvent = JsonSerializer.Deserialize<CmsEvent>(
+                eventEntity.Payload,
+                JsonConfigs.Default);
 
             if (cmsEvent == null)
                 return Result.Fail("Event payload is null.");
 
-            var updateContentResult = await _contentManagementService.PublishContentAsync(cmsEvent, cancellationToken);
+            var contentChangeResult = await _contentManagementService.ExecuteContentChangeAsync(cmsEvent, cancellationToken);
 
-            if (updateContentResult.IsFailed)
+            if (contentChangeResult.IsFailed)
             {
                 _logger.Error("Failed to update content from event with ID: {EventId}. Errors: {Errors}",
                     eventEntity.Id,
-                    string.Join("; ", updateContentResult.Errors.Select(e => e.Message)));
-                return Result.Fail(updateContentResult.Errors);
+                    string.Join("; ", contentChangeResult.Errors.Select(e => e.Message)));
+                return Result.Fail(contentChangeResult.Errors);
             }
 
             _logger.Information("Successfully processed event with ID: {EventId}", eventEntity.Id);
@@ -131,13 +132,13 @@ internal class EventService(
         {
             var errorMessage = $"Serialization failed for event payload with ID: {eventEntity.Id}.";
             _logger.Error(ex, errorMessage);
-            return Result.Fail(errorMessage);
+            return Result.Fail($"{errorMessage} Exception{ex.Message}");
         }
         catch (Exception ex)
         {
             var errorMessage = $"Failed to process event with ID: {eventEntity.Id}.";
             _logger.Error(ex, errorMessage);
-            return Result.Fail(errorMessage);
+            return Result.Fail($"{errorMessage} Exception{ex.Message}");
         }
     }
 }

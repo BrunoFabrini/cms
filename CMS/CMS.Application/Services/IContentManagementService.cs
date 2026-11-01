@@ -5,5 +5,5 @@ namespace CMS.Application.Services;
 
 public interface IContentManagementService
 {
-    Task<Result> PublishContentAsync(CmsEvent cmsEvent, CancellationToken cancellationToken);
+    Task<Result> ExecuteContentChangeAsync(CmsEvent cmsEvent, CancellationToken cancellationToken);
 }

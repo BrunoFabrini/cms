@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using CMS.Domain.Enums;
+using System.Text.Json.Serialization;
 
 namespace CMS.Application.Models;
 
@@ -7,7 +8,8 @@ public class CmsEvent
     [JsonPropertyName("Id")]
     public string PublicId { get; set; } = null!;
 
-    public string Type { get; set; } = null!;
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public EventType Type { get; set; }
 
     public object? Payload { get; set; }
 

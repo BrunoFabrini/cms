@@ -18,10 +18,10 @@ public class ContentVersionEntityConfiguration : IEntityTypeConfiguration<Conten
         builder.Property(x => x.Timestamp)
             .HasColumnType("datetimeoffset")
             .HasDefaultValueSql("SYSDATETIMEOFFSET()");
-        builder.Property(x => x.IsPublished).HasColumnType("bit");
+        builder.Property(x => x.Published).HasColumnType("bit");
 
         builder.HasOne(x => x.ContentEntity)
-            .WithMany(x => x.ContentVersions)
+            .WithMany(x => x.Versions)
             .HasForeignKey(x => x.ContentId);
     }
 }
