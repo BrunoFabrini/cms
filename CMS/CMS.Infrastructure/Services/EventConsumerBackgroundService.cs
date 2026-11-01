@@ -2,26 +2,26 @@
 using CMS.Application.Services;
 using CMS.Infrastructure.Options;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Serilog;
 
 namespace CMS.Infrastructure.Services;
 
 public class EventConsumerBackgroundService(
     IEventService eventService,
     IOptions<EventConsumerOptions> options,
-    ILogger<EventConsumerBackgroundService> logger
-) : IEventConsumerBackgroundService, IHostedService
+    ILogger logger
+) : IHostedService
 {
     private readonly IEventService _eventService = eventService;
     private readonly EventConsumerOptions _options = options.Value;
-    private readonly ILogger<EventConsumerBackgroundService> _logger = logger;
+    private readonly ILogger _logger = logger.ForContext<EventConsumerBackgroundService>();
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         await Task.Delay(TimeSpan.FromSeconds(_options.StartupDelayInSeconds), cancellationToken);
 
-        _logger.LogInformation("Event consumer background service started.");
+        _logger.Information("Event consumer background service started.");
 
         while (!cancellationToken.IsCancellationRequested)
         {
@@ -35,7 +35,7 @@ public class EventConsumerBackgroundService(
             var processResult = await _eventService.ProcessEventsAsync(args, cancellationToken);
 
             if (processResult.IsFailed)
-                _logger.LogError("Error processing events: {Errors}", processResult.Errors);
+                _logger.Error("Error processing events: {Errors}", processResult.Errors);
 
             await Task.Delay(TimeSpan.FromSeconds(_options.ExecutionDelay), cancellationToken);
         }
@@ -43,6 +43,6 @@ public class EventConsumerBackgroundService(
 
     public async Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Event consumer background service stopped.");
+        _logger.Information("Event consumer background service stopped.");
     }
 }

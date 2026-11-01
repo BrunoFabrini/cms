@@ -5,7 +5,7 @@ using CMS.Domain.Entities;
 using CMS.Domain.Enums;
 using CMS.Domain.Repositories.Events;
 using FluentResults;
-using Microsoft.Extensions.Logging;
+using Serilog;
 using System.Text;
 using System.Text.Json;
 
@@ -21,7 +21,7 @@ internal class EventService(
     private readonly IEventWriteRepository _eventWriteRepository = eventWriteRepository;
     private readonly IEventReadRepository _eventReadRepository = eventReadRepository;
     private readonly IContentManagementService _contentManagementService = contentManagementService;
-    private readonly ILogger _logger = logger;
+    private readonly ILogger _logger = logger.ForContext<EventService>();
 
     public async Task<Result> IngestEventsAsync(PostEventsRequest request, CancellationToken cancellationToken)
     {
@@ -89,7 +89,9 @@ internal class EventService(
             var updateEventResult = await _eventWriteRepository.UpdateAsync(eventEntity, cancellationToken);
 
             if (updateEventResult.IsFailed)
-                _logger.LogError($"Failed to update event with ID: {eventEntity.Id}. Errors: {string.Join("; ", updateEventResult.Errors.Select(e => e.Message))}");
+                _logger.Error("Failed to update event with ID: {EventId}. Errors: {Errors}",
+                    eventEntity.Id,
+                    string.Join("; ", updateEventResult.Errors.Select(e => e.Message)));
         }
 
         return Result.Ok();
@@ -99,7 +101,7 @@ internal class EventService(
     {
         try
         {
-            _logger.LogInformation($"Processing event with ID: {eventEntity.Id}");
+            _logger.Information("Processing event with ID: {EventId}", eventEntity.Id);
 
             //TODO - Reuse global json serializer
             var cmsEvent = JsonSerializer.Deserialize<CmsEvent>(eventEntity.Payload);
@@ -111,24 +113,26 @@ internal class EventService(
 
             if (updateContentResult.IsFailed)
             {
-                _logger.LogError($"Failed to update content from event with ID: {eventEntity.Id}. Errors: {string.Join("; ", updateContentResult.Errors.Select(e => e.Message))}");
+                _logger.Error("Failed to update content from event with ID: {EventId}. Errors: {Errors}",
+                    eventEntity.Id,
+                    string.Join("; ", updateContentResult.Errors.Select(e => e.Message)));
                 return Result.Fail(updateContentResult.Errors);
             }
 
-            _logger.LogInformation($"Successfully processed event with ID: {eventEntity.Id}");
+            _logger.Information("Successfully processed event with ID: {EventId}", eventEntity.Id);
 
             return Result.Ok();
         }
         catch (JsonException ex)
         {
             var errorMessage = $"Serialization failed for event payload with ID: {eventEntity.Id}.";
-            _logger.LogError(ex, errorMessage);
+            _logger.Error(ex, errorMessage);
             return Result.Fail(errorMessage);
         }
         catch (Exception ex)
         {
             var errorMessage = $"Failed to process event with ID: {eventEntity.Id}.";
-            _logger.LogError(ex, errorMessage);
+            _logger.Error(ex, errorMessage);
             return Result.Fail(errorMessage);
         }
     }

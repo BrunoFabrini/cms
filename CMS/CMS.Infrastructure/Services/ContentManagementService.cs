@@ -2,7 +2,7 @@
 using CMS.Application.Services;
 using CMS.Domain.Repositories.Content;
 using FluentResults;
-using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace CMS.Infrastructure.Services;
 
@@ -12,7 +12,7 @@ public class ContentManagementService(
 ) : IContentManagementService
 {
     private readonly IContentRepository _contentRepository = contentRepository;
-    private readonly ILogger _logger = logger;
+    private readonly ILogger _logger = logger.ForContext<ContentManagementService>();
 
     public async Task<Result> PublishContentAsync(CmsEvent cmsEvent, CancellationToken cancellationToken)
     {
@@ -28,7 +28,7 @@ public class ContentManagementService(
 
         //TODO - Implement content update logic here
 
-        _logger.LogInformation("Content PublicId {PublicId} Version {Version} published successfully.",
+        _logger.Information("Content PublicId {PublicId} Version {Version} published successfully.",
             cmsEvent.PublicId,
             cmsEvent.Version
         );

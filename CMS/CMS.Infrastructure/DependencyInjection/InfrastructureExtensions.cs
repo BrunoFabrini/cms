@@ -9,6 +9,7 @@ using CMS.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Serilog;
 
 namespace CMS.Infrastructure.DependencyInjection;
 
@@ -31,8 +32,7 @@ public static class InfrastructureExtensions
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IContentManagementService, ContentManagementService>();
 
-        //TODO - CHeck if this should be scoped or singleton
-        services.AddScoped<IEventConsumerBackgroundService, EventConsumerBackgroundService>();
+        services.AddHostedService<EventConsumerBackgroundService>();
     }
 
     public static void AddOptions(this IServiceCollection services, IConfiguration configuration)
@@ -42,8 +42,10 @@ public static class InfrastructureExtensions
 
     public static void AddInfrastructureServices(this IServiceCollection services)
     {
-        //services.AddScoped<ILogService, LogService>();
-        //TODO - AddLogger
+        services.AddSerilog((_, loggerConfiguration) => loggerConfiguration
+            .MinimumLevel.Information()
+            .Enrich.FromLogContext()
+            .WriteTo.Console());
     }
 
     public static void AddDatabase(this IServiceCollection services)
