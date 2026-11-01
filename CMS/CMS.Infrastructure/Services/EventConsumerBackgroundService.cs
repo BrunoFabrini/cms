@@ -1,6 +1,7 @@
 ﻿using CMS.Application.Models;
 using CMS.Application.Services;
 using CMS.Infrastructure.Options;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Serilog;
@@ -8,22 +9,22 @@ using Serilog;
 namespace CMS.Infrastructure.Services;
 
 public class EventConsumerBackgroundService(
-    IEventService eventService,
+    IServiceScopeFactory scopeFactory,
     IOptions<EventConsumerOptions> options,
     ILogger logger
-) : IHostedService
+) : BackgroundService
 {
-    private readonly IEventService _eventService = eventService;
+    private readonly IServiceScopeFactory _scopeFactory = scopeFactory;
     private readonly EventConsumerOptions _options = options.Value;
     private readonly ILogger _logger = logger.ForContext<EventConsumerBackgroundService>();
 
-    public async Task StartAsync(CancellationToken cancellationToken)
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        await Task.Delay(TimeSpan.FromSeconds(_options.StartupDelayInSeconds), cancellationToken);
+        await Task.Delay(TimeSpan.FromSeconds(_options.StartupDelayInSeconds), stoppingToken);
 
         _logger.Information("Event consumer background service started.");
 
-        while (!cancellationToken.IsCancellationRequested)
+        while (!stoppingToken.IsCancellationRequested)
         {
             var args = new ProcessEventsArgs
             {
@@ -32,17 +33,22 @@ public class EventConsumerBackgroundService(
                 ErrorEventsRatio = _options.ErrorEventsRatio
             };
 
-            var processResult = await _eventService.ProcessEventsAsync(args, cancellationToken);
+            await using (var scope = _scopeFactory.CreateAsyncScope())
+            {
+                var eventService = scope.ServiceProvider.GetRequiredService<IEventService>();
+                var processResult = await eventService.ProcessEventsAsync(args, stoppingToken);
 
-            if (processResult.IsFailed)
-                _logger.Error("Error processing events: {Errors}", processResult.Errors);
+                if (processResult.IsFailed)
+                    _logger.Error("Error processing events: {Errors}", processResult.Errors);
+            }
 
-            await Task.Delay(TimeSpan.FromSeconds(_options.ExecutionDelay), cancellationToken);
+            await Task.Delay(TimeSpan.FromSeconds(_options.ExecutionDelay), stoppingToken);
         }
     }
 
-    public async Task StopAsync(CancellationToken cancellationToken)
+    public override async Task StopAsync(CancellationToken cancellationToken)
     {
         _logger.Information("Event consumer background service stopped.");
+        await base.StopAsync(cancellationToken);
     }
 }

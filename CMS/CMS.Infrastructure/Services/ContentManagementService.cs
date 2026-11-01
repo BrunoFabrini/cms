@@ -46,10 +46,10 @@ public class ContentManagementService(
         if (string.IsNullOrWhiteSpace(cmsEvent.Type))
             validationErrors.Add(new Error("Content Type is null or empty"));
 
-        if (string.IsNullOrWhiteSpace(cmsEvent.Payload))
+        if (cmsEvent.Payload is null && cmsEvent.Type != "delete") //TODO - Convert delete to a enum or class
             validationErrors.Add(new Error("Content Payload is null or empty"));
 
-        if (cmsEvent.Version <= 0)
+        if (cmsEvent.Version.GetValueOrDefault() <= 0 && cmsEvent.Type != "delete")
             validationErrors.Add(new Error("Content Version must be greater than 0"));
 
         if (validationErrors.Count > 0)

@@ -25,6 +25,8 @@ internal class EventService(
 
     public async Task<Result> IngestEventsAsync(PostEventsRequest request, CancellationToken cancellationToken)
     {
+        _logger.Information("Ingesting {EventCount} events.", request.Count);
+
         var serializedEvents = await Task.WhenAll(
             request.Select(async cmsEvent =>
             {
@@ -49,6 +51,8 @@ internal class EventService(
 
         if (createEventsResult.IsFailed)
             return Result.Fail(createEventsResult.Errors);
+
+        _logger.Information("Successfully ingested {EventCount} events.", events.Count);
 
         return Result.Ok();
     }

@@ -9,9 +9,9 @@ public class CmsEvent
 
     public string Type { get; set; } = null!;
 
-    public string Payload { get; set; } = string.Empty;
+    public object? Payload { get; set; }
 
-    public int Version { get; set; }
+    public int? Version { get; set; }
 
     public DateTimeOffset Timestamp { get; set; }
 }
