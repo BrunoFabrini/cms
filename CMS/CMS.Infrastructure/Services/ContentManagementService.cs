@@ -11,11 +11,11 @@ using System.Text.Json;
 namespace CMS.Infrastructure.Services;
 
 public class ContentManagementService(
-    IContentRepository contentRepository,
+    IContentWriteRepository contentRepository,
     ILogger logger
 ) : IContentManagementService
 {
-    private readonly IContentRepository _contentRepository = contentRepository;
+    private readonly IContentWriteRepository _contentRepository = contentRepository;
     private readonly ILogger _logger = logger.ForContext<ContentManagementService>();
 
     public async Task<Result> ExecuteContentChangeAsync(CmsEventModel cmsEvent, CancellationToken cancellationToken)
@@ -25,7 +25,7 @@ public class ContentManagementService(
         if (validationResult.IsFailed)
             return Result.Fail(validationResult.Errors);
 
-        var getContentResult = await _contentRepository.GetContentByPublicIdAsync(cmsEvent.PublicId, cancellationToken);
+        var getContentResult = await _contentRepository.GetForUpdateByPublicIdAsync(cmsEvent.PublicId, cancellationToken);
 
         if (getContentResult.IsFailed)
             return Result.Fail(getContentResult.Errors);

@@ -5,7 +5,7 @@ namespace CMS.Domain.Repositories.Events;
 
 public interface IEventReadRepository
 {
-    Task<Result<IList<EventEntity>>> GetPendingEventsAsync(
+    Task<Result<List<EventEntity>>> GetPendingEventsAsync(
         int batchSize,
         float errorEventsRatio,
         DateTimeOffset errorCutoffDateTime,

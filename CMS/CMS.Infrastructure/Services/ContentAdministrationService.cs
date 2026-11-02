@@ -5,10 +5,10 @@ using FluentResults;
 namespace CMS.Infrastructure.Services;
 
 public class ContentAdministrationService(
-    IContentRepository contentRepository
+    IContentWriteRepository contentRepository
 ) : IContentAdministrationService
 {
-    private readonly IContentRepository _contentRepository = contentRepository;
+    private readonly IContentWriteRepository _contentRepository = contentRepository;
 
     public async Task<Result> DisableContentAsync(string publicId, CancellationToken cancellationToken)
     {

@@ -12,32 +12,45 @@ internal class EventReadRepository(
 {
     private readonly CmsDbContext _dbContext = dbContext;
 
-    public async Task<Result<IList<EventEntity>>> GetPendingEventsAsync(
+    private static readonly SemaphoreSlim _readSemaphore = new(1, 1);
+
+    public async Task<Result<List<EventEntity>>> GetPendingEventsAsync(
         int batchSize,
         float errorEventsRatio,
         DateTimeOffset errorCutoffDateTime,
         CancellationToken cancellationToken
     )
     {
-        //TODO - Add SemaphoreSlim to read data from table to avoid concurrency issues
-        //when multiple instances of the service are running
-        var errorEventsBatchSize = (int)(batchSize * errorEventsRatio);
-        var pendingEventsBatchSize = batchSize - errorEventsBatchSize;
+        await _readSemaphore.WaitAsync(cancellationToken);
 
-        var dbPendingEvents = _dbContext.Events
-            .Where(e => e.Status == EventStatus.Pending)
-            .OrderBy(e => e.CreatedDateTime)
-            .Take(pendingEventsBatchSize);
+        try
+        {
+            var errorEventsBatchSize = (int)(batchSize * errorEventsRatio);
+            var pendingEventsBatchSize = batchSize - errorEventsBatchSize;
 
-        var dbErrorEvents = _dbContext.Events
-            .Where(e => e.Status == EventStatus.Pending && e.LastProcessedAtDateTime < errorCutoffDateTime)
-            .OrderBy(e => e.LastProcessedAtDateTime)
-            .Take(errorEventsBatchSize);
+            var dbPendingEvents = _dbContext.Events
+                .Where(e => e.Status == EventStatus.Pending)
+                .OrderBy(e => e.CreatedDateTime)
+                .Take(pendingEventsBatchSize);
 
-        var combinedQuery = dbPendingEvents.Concat(dbErrorEvents);
+            var dbErrorEvents = _dbContext.Events
+                .Where(e => e.Status == EventStatus.Pending && e.LastProcessedAtDateTime < errorCutoffDateTime)
+                .OrderBy(e => e.LastProcessedAtDateTime)
+                .Take(errorEventsBatchSize);
 
-        IList<EventEntity> dbEvents = await combinedQuery.ToListAsync(cancellationToken);
+            var combinedQuery = dbPendingEvents.Concat(dbErrorEvents);
 
-        return Result.Ok(dbEvents);
+            List<EventEntity> dbEvents = await combinedQuery.ToListAsync(cancellationToken);
+
+            dbEvents.ForEach(entity => entity.Status = EventStatus.Processing);
+
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return Result.Ok(dbEvents);
+        }
+        finally
+        {
+            _readSemaphore.Release();
+        }
     }
 }

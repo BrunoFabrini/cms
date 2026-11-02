@@ -1,4 +1,5 @@
 using CMS.Domain.Entities;
+using CMS.Domain.Models.Content;
 using CMS.Domain.Repositories.Content;
 using FluentResults;
 using Microsoft.EntityFrameworkCore;
@@ -17,7 +18,7 @@ internal class ContentReadRepository(
         return Result.Ok(count);
     }
 
-    public async Task<Result<IReadOnlyList<ContentEntity>>> GetVisibleContentsAsync(
+    public async Task<Result<IReadOnlyList<ContentReadModel>>> GetVisibleContentsAsync(
         bool includeDisabled,
         int page,
         int pageSize,
@@ -29,18 +30,39 @@ internal class ContentReadRepository(
         var contents = await ApplySorting(BuildVisibleQuery(includeDisabled), sortBy, sortDirection)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(content => content.Versions
+                    .OrderByDescending(version => version.VersionNumber)
+                    .Select(version => new ContentReadModel
+                    {
+                        PublicId = content.PublicId,
+                        VersionNumber = version.VersionNumber,
+                        Timestamp = version.Timestamp,
+                        Content = version.Content
+                    })
+                    .First())
                 .ToListAsync(cancellationToken);
 
-        return Result.Ok((IReadOnlyList<ContentEntity>)contents);
+        return Result.Ok((IReadOnlyList<ContentReadModel>)contents);
     }
 
-    public async Task<Result<ContentEntity?>> GetVisibleContentByPublicIdAsync(
+    public async Task<Result<ContentReadModel?>> GetVisibleContentByPublicIdAsync(
         string publicId,
         bool includeDisabled,
         CancellationToken cancellationToken)
     {
         var content = await BuildVisibleQuery(includeDisabled)
-            .FirstOrDefaultAsync(content => content.PublicId == publicId, cancellationToken);
+            .Where(content => content.PublicId == publicId)
+            .Select(content => content.Versions
+                .OrderByDescending(version => version.VersionNumber)
+                .Select(version => new ContentReadModel
+                {
+                    PublicId = content.PublicId,
+                    VersionNumber = version.VersionNumber,
+                    Timestamp = version.Timestamp,
+                    Content = version.Content
+                })
+                .First())
+            .FirstOrDefaultAsync(cancellationToken);
 
         return Result.Ok(content);
     }
@@ -49,9 +71,6 @@ internal class ContentReadRepository(
     {
         var query = _dbContext.Contents
             .AsNoTracking()
-            .Include(content => content.Versions
-                .OrderByDescending(version => version.VersionNumber)
-                .Take(1))
             .Where(content => content.Versions.Any(version =>
                 version.Published &&
                 version.VersionNumber == content.Versions.Max(item => item.VersionNumber)));

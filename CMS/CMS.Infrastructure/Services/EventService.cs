@@ -91,8 +91,6 @@ internal class EventService(
 
         foreach (var eventEntity in getPendingEventsResult.Value)
         {
-            eventEntity.Status = EventStatus.Processing;
-
             var processEventResult = await ProcessEventAsync(eventEntity, cancellationToken);
 
             if (processEventResult.IsFailed)

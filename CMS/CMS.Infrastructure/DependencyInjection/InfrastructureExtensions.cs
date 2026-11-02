@@ -78,7 +78,7 @@ public static class InfrastructureExtensions
     {
         services.AddScoped<IEventReadRepository, EventReadRepository>();
         services.AddScoped<IEventWriteRepository, EventWriteRepository>();
-        services.AddScoped<IContentRepository, ContentRepository>();
+        services.AddScoped<IContentWriteRepository, ContentWriteRepository>();
         services.AddScoped<IContentReadRepository, ContentReadRepository>();
     }
 }

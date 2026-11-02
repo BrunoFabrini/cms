@@ -2,7 +2,7 @@ using CMS.Application.Features.Contents;
 using CMS.Application.Models;
 using CMS.Application.Models.Content;
 using CMS.Application.Services;
-using CMS.Domain.Entities;
+using CMS.Domain.Models.Content;
 using CMS.Domain.Repositories.Content;
 using FluentResults;
 using System.Text.Json;
@@ -49,12 +49,7 @@ public class ContentQueryService(
 
         foreach (var content in contentsResult.Value)
         {
-            var mappingResult = MapContent(content);
-
-            if (mappingResult.IsFailed)
-                return Result.Fail(mappingResult.Errors);
-
-            contentList.Add(mappingResult.Value);
+            contentList.Add(MapContent(content));
         }
 
         var totalPages = countResult.Value == 0
@@ -91,11 +86,7 @@ public class ContentQueryService(
         if (contentResult.Value is null)
             return Result.Fail("Content not found.");
 
-        var responseResult = MapContent(contentResult.Value);
-
-        return responseResult.IsFailed
-            ? Result.Fail(responseResult.Errors)
-            : Result.Ok<ContentModel?>(responseResult.Value);
+        return Result.Ok<ContentModel?>(MapContent(contentResult.Value));
     }
 
     private static Result ValidateQuery(ListContentsRequest request)
@@ -121,23 +112,16 @@ public class ContentQueryService(
         string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase) ||
         string.Equals(sortDirection, "desc", StringComparison.OrdinalIgnoreCase);
 
-    private static Result<ContentModel> MapContent(ContentEntity content)
+    private static ContentModel MapContent(ContentReadModel content)
     {
-        var latestVersion = content.Versions
-            .OrderByDescending(version => version.VersionNumber)
-            .FirstOrDefault();
+        using var document = JsonDocument.Parse(content.Content);
 
-        if (latestVersion is null || !latestVersion.Published)
-            return Result.Fail<ContentModel>($"Content {content.PublicId} has no published latest version.");
-
-        using var document = JsonDocument.Parse(latestVersion.Content);
-
-        return Result.Ok(new ContentModel
+        return new ContentModel
         {
             Id = content.PublicId,
-            Version = latestVersion.VersionNumber,
-            Timestamp = latestVersion.Timestamp,
+            Version = content.VersionNumber,
+            Timestamp = content.Timestamp,
             Content = document.RootElement.Clone()
-        });
+        };
     }
 }
