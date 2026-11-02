@@ -46,6 +46,9 @@ public static class InfrastructureExtensions
             .MinimumLevel.Information()
             .Enrich.FromLogContext()
             .WriteTo.Console());
+
+        services.AddExceptionHandler<GlobalExceptionHandler>();
+        services.AddProblemDetails();
     }
 
     public static void AddDatabase(this IServiceCollection services)
