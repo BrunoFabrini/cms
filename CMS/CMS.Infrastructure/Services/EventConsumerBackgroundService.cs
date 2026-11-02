@@ -30,7 +30,8 @@ public class EventConsumerBackgroundService(
             {
                 BatchSize = _options.BatchSize,
                 ErrorCutoffTimeInMinutes = _options.ErrorCutoffDateInMinutes,
-                ErrorEventsRatio = _options.ErrorEventsRatio
+                ErrorEventsRatio = _options.ErrorEventsRatio,
+                MaxProcessingAttempts = _options.MaxProcessingAttempts
             };
 
             await using (var scope = _scopeFactory.CreateAsyncScope())

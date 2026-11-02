@@ -26,10 +26,12 @@ internal class EventReadRepository(
 
         var dbPendingEvents = _dbContext.Events
             .Where(e => e.Status == EventStatus.Pending)
+            .OrderBy(e => e.CreatedDateTime)
             .Take(pendingEventsBatchSize);
 
         var dbErrorEvents = _dbContext.Events
             .Where(e => e.Status == EventStatus.Pending && e.LastProcessedAtDateTime < errorCutoffDateTime)
+            .OrderBy(e => e.LastProcessedAtDateTime)
             .Take(errorEventsBatchSize);
 
         var combinedQuery = dbPendingEvents.Concat(dbErrorEvents);

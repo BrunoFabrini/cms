@@ -4,8 +4,10 @@ using CMS.Application.Services;
 using CMS.Domain.Entities;
 using CMS.Domain.Enums;
 using CMS.Domain.Repositories.Events;
+using CMS.Infrastructure.Options;
 using CMS.Infrastructure.Utils;
 using FluentResults;
+using Microsoft.Extensions.Options;
 using Serilog;
 using System.Text;
 using System.Text.Json;
@@ -16,16 +18,31 @@ internal class EventService(
     IEventWriteRepository eventWriteRepository,
     IEventReadRepository eventReadRepository,
     IContentManagementService contentManagementService,
+    IOptions<EventIngestionOptions> options,
     ILogger logger
 ) : IEventService
 {
     private readonly IEventWriteRepository _eventWriteRepository = eventWriteRepository;
     private readonly IEventReadRepository _eventReadRepository = eventReadRepository;
     private readonly IContentManagementService _contentManagementService = contentManagementService;
+    private readonly EventIngestionOptions _options = options.Value;
     private readonly ILogger _logger = logger.ForContext<EventService>();
 
     public async Task<Result> IngestEventsAsync(PostEventsRequest request, CancellationToken cancellationToken)
     {
+        if (request.Count == 0)
+        {
+            _logger.Information("No events to ingest.");
+            return Result.Ok();
+        }
+
+        if (request.Count > _options.MaxBatchSize)
+        {
+            var errorMessage = $"Received {request.Count} events, which exceeds the limit of {_options.MaxBatchSize}.";
+            _logger.Warning(errorMessage);
+            return Result.Fail(errorMessage);
+        }
+
         _logger.Information("Ingesting {EventCount} events.", request.Count);
 
         var serializedEvents = await Task.WhenAll(
@@ -43,6 +60,7 @@ internal class EventService(
         {
             Payload = serializedEvent, 
             Status = EventStatus.Pending,
+            ProcessingAttempts = 0,
             ErrorMessage = string.Empty,
             LastProcessedAtDateTime = null
         }).ToList();
@@ -79,8 +97,12 @@ internal class EventService(
 
             if (processEventResult.IsFailed)
             {
-                eventEntity.Status = EventStatus.Error;
+                eventEntity.ProcessingAttempts++;
                 eventEntity.ErrorMessage = string.Join("; ", processEventResult.Errors.Select(e => e.Message));
+
+                eventEntity.Status = eventEntity.ProcessingAttempts >= args.MaxProcessingAttempts
+                    ? EventStatus.Quarantined
+                    : EventStatus.Error;
             }
             else
             {

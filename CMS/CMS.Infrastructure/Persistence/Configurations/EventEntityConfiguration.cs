@@ -19,6 +19,9 @@ public class EventEntityConfiguration : IEntityTypeConfiguration<EventEntity>
             .HasConversion<byte>()
             .HasColumnType("tinyint")
             .IsRequired();
+        builder.Property(x => x.ProcessingAttempts)
+            .HasColumnType("int")
+            .IsRequired();
         builder.Property(x => x.ErrorMessage)
             .HasColumnType("varchar(250)")
             .IsRequired(false);

@@ -39,15 +39,7 @@ public class ContentManagementService(
         };
 
         if (contentChangeResult.IsFailed)
-        {
-            _logger
-                .Warning("Failed to update content from event with ID: {EventId}. Errors: {Errors}",
-                    cmsEvent.PublicId,
-                    string.Join("; ", contentChangeResult.Errors.Select(e => e.Message))
-            );
-
             return Result.Fail(contentChangeResult.Errors);
-        }
 
         return Result.Ok();
     }
