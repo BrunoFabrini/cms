@@ -35,6 +35,9 @@ public abstract class BaseAuthenticationHandler(
         if (credentials.Length != 2)
             return Result.Fail("Invalid credentials format.");
 
+        if (credentials[0].Length is < 10 or > 20)
+            return Result.Fail("Username must contain between 10 and 20 characters.");
+
         return Result.Ok((credentials[0], credentials[1]));
     }
 

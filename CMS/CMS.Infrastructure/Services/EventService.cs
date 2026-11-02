@@ -134,6 +134,31 @@ internal class EventService(
             if (cmsEvent == null)
                 return Result.Fail("Event payload is null.");
 
+            if (cmsEvent.Type == EventType.Publish)
+            {
+                var deletionResult = await _eventReadRepository.GetLatestProcessedDeletePayloadAsync(
+                    cmsEvent.PublicId,
+                    cancellationToken);
+
+                if (deletionResult.IsFailed)
+                    return Result.Fail(deletionResult.Errors);
+
+                if (deletionResult.Value is not null)
+                {
+                    var deletionEvent = JsonSerializer.Deserialize<CmsEventModel>(
+                        deletionResult.Value,
+                        JsonConfigs.Default);
+
+                    if (deletionEvent is not null && IsOlderThanDeletion(cmsEvent, deletionEvent))
+                    {
+                        _logger.Warning(
+                            "Ignoring stale publish event for content {PublicId} received after deletion.",
+                            cmsEvent.PublicId);
+                        return Result.Ok();
+                    }
+                }
+            }
+
             var contentChangeResult = await _contentManagementService.ExecuteContentChangeAsync(cmsEvent, cancellationToken);
 
             if (contentChangeResult.IsFailed)
@@ -160,5 +185,13 @@ internal class EventService(
             _logger.Error(ex, errorMessage);
             return Result.Fail($"{errorMessage} Exception{ex.Message}");
         }
+    }
+
+    private static bool IsOlderThanDeletion(CmsEventModel cmsEvent, CmsEventModel deletionEvent)
+    {
+        if (deletionEvent.Version.HasValue && cmsEvent.Version.HasValue)
+            return cmsEvent.Version.Value <= deletionEvent.Version.Value;
+
+        return cmsEvent.Timestamp <= deletionEvent.Timestamp;
     }
 }

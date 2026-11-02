@@ -31,4 +31,8 @@
     <Folder Include="Persistence\Migrations\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <InternalsVisibleTo Include="CMS.Infrastructure.Tests" />
+  </ItemGroup>
+
 </Project>

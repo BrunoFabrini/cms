@@ -6,6 +6,7 @@ using CMS.Domain.Repositories.Content;
 using CMS.Infrastructure.Utils;
 using FluentResults;
 using Serilog;
+using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace CMS.Infrastructure.Services;
@@ -17,6 +18,7 @@ public class ContentManagementService(
 {
     private readonly IContentWriteRepository _contentRepository = contentRepository;
     private readonly ILogger _logger = logger.ForContext<ContentManagementService>();
+    private static readonly ConcurrentDictionary<string, ContentLockEntry> ContentLocks = new(StringComparer.Ordinal);
 
     public async Task<Result> ExecuteContentChangeAsync(CmsEventModel cmsEvent, CancellationToken cancellationToken)
     {
@@ -24,6 +26,8 @@ public class ContentManagementService(
 
         if (validationResult.IsFailed)
             return Result.Fail(validationResult.Errors);
+
+        using var contentLock = await AcquireContentLockAsync(cmsEvent.PublicId, cancellationToken);
 
         var getContentResult = await _contentRepository.GetForUpdateByPublicIdAsync(cmsEvent.PublicId, cancellationToken);
 
@@ -44,6 +48,72 @@ public class ContentManagementService(
         return Result.Ok();
     }
 
+    private static async Task<IDisposable> AcquireContentLockAsync(
+        string publicId,
+        CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            var entry = ContentLocks.GetOrAdd(publicId, _ => new ContentLockEntry());
+
+            lock (entry)
+            {
+                if (!ContentLocks.TryGetValue(publicId, out var current) ||
+                    !ReferenceEquals(current, entry))
+                    continue;
+
+                entry.ReferenceCount++;
+            }
+
+            try
+            {
+                await entry.Semaphore.WaitAsync(cancellationToken);
+                return new ContentLockLease(publicId, entry);
+            }
+            catch
+            {
+                ReleaseContentLock(publicId, entry, releaseSemaphore: false);
+                throw;
+            }
+        }
+    }
+
+    private static void ReleaseContentLock(
+        string publicId,
+        ContentLockEntry entry,
+        bool releaseSemaphore = true)
+    {
+        if (releaseSemaphore)
+            entry.Semaphore.Release();
+
+        var disposeSemaphore = false;
+        lock (entry)
+        {
+            entry.ReferenceCount--;
+            if (entry.ReferenceCount == 0 &&
+                ContentLocks.TryGetValue(publicId, out var current) &&
+                ReferenceEquals(current, entry))
+            {
+                ContentLocks.TryRemove(publicId, out _);
+                disposeSemaphore = true;
+            }
+        }
+
+        if (disposeSemaphore)
+            entry.Semaphore.Dispose();
+    }
+
+    private sealed class ContentLockEntry
+    {
+        public SemaphoreSlim Semaphore { get; } = new(1, 1);
+        public int ReferenceCount { get; set; }
+    }
+
+    private sealed class ContentLockLease(string publicId, ContentLockEntry entry) : IDisposable
+    {
+        public void Dispose() => ReleaseContentLock(publicId, entry);
+    }
+
     private static async Task<Result> ValidateEvent(CmsEventModel cmsEvent)
     {
         var validationErrors = new List<IError>();
@@ -51,7 +121,8 @@ public class ContentManagementService(
         if (string.IsNullOrWhiteSpace(cmsEvent.PublicId))
             validationErrors.Add(new Error("Content PublicId is null or empty"));
 
-        if (cmsEvent.Payload is null && cmsEvent.Type != EventType.Delete)
+        if (cmsEvent.Payload is null &&
+            cmsEvent.Type is not EventType.Delete and not EventType.Unpublish)
             validationErrors.Add(new Error("Content Payload is null or empty"));
 
         if (cmsEvent.Version.GetValueOrDefault() <= 0 && cmsEvent.Type != EventType.Delete)

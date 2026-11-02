@@ -11,4 +11,9 @@ public interface IEventReadRepository
         DateTimeOffset errorCutoffDateTime,
         CancellationToken cancellationToken
     );
+
+    Task<Result<string?>> GetLatestProcessedDeletePayloadAsync(
+        string publicId,
+        CancellationToken cancellationToken
+    );
 }
