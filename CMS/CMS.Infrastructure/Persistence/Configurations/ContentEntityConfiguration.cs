@@ -14,5 +14,9 @@ public class ContentEntityConfiguration : IEntityTypeConfiguration<ContentEntity
 
         builder.Property(x => x.PublicId).HasColumnType("varchar(100)");
         builder.Property(x => x.Enabled).HasColumnType("bit");
+
+        builder.HasIndex(x => x.PublicId)
+            .IncludeProperties(x => x.Enabled)
+            .HasDatabaseName("IX_Contents_PublicId");
     }
 }

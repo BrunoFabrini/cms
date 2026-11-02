@@ -27,5 +27,11 @@ public class EventEntityConfiguration : IEntityTypeConfiguration<EventEntity>
             .IsRequired(false);
         builder.Property(x => x.LastProcessedAtDateTime)
             .HasColumnType("datetimeoffset(2)");
+
+        builder.HasIndex(x => new { x.Status, x.CreatedDateTime })
+            .HasDatabaseName("IX_Events_Status_CreatedDateTime");
+
+        builder.HasIndex(x => new { x.Status, x.LastProcessedAtDateTime })
+            .HasDatabaseName("IX_Events_Status_LastProcessedAtDateTime");
     }
 }

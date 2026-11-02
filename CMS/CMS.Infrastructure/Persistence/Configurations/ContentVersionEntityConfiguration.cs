@@ -23,5 +23,10 @@ public class ContentVersionEntityConfiguration : IEntityTypeConfiguration<Conten
         builder.HasOne(x => x.ContentEntity)
             .WithMany(x => x.Versions)
             .HasForeignKey(x => x.ContentId);
+
+        builder.HasIndex(x => new { x.ContentId, x.VersionNumber })
+            .IsDescending(false, true)
+            .IncludeProperties(x => new { x.Published, x.Timestamp })
+            .HasDatabaseName("IX_ContentVersions_ContentId_VersionNumber");
     }
 }

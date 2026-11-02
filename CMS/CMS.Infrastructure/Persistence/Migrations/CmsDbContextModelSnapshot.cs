@@ -46,6 +46,11 @@ namespace CMS.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("PK_Content_ContentId");
 
+                    b.HasIndex("PublicId")
+                        .HasDatabaseName("IX_Contents_PublicId");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("PublicId"), new[] { "Enabled" });
+
                     b.ToTable("Contents", (string)null);
                 });
 
@@ -84,7 +89,11 @@ namespace CMS.Infrastructure.Persistence.Migrations
                     b.HasKey("Id")
                         .HasName("PK_ContentVersion_ContentVersionId");
 
-                    b.HasIndex("ContentId");
+                    b.HasIndex("ContentId", "VersionNumber")
+                        .IsDescending(false, true)
+                        .HasDatabaseName("IX_ContentVersions_ContentId_VersionNumber");
+
+                    SqlServerIndexBuilderExtensions.IncludeProperties(b.HasIndex("ContentId", "VersionNumber"), new[] { "Published", "Timestamp" });
 
                     b.ToTable("ContentVersions", (string)null);
                 });
@@ -121,6 +130,12 @@ namespace CMS.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id")
                         .HasName("PK_Event_EventId");
+
+                    b.HasIndex("Status", "CreatedDateTime")
+                        .HasDatabaseName("IX_Events_Status_CreatedDateTime");
+
+                    b.HasIndex("Status", "LastProcessedAtDateTime")
+                        .HasDatabaseName("IX_Events_Status_LastProcessedAtDateTime");
 
                     b.ToTable("Events", (string)null);
                 });
