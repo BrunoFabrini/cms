@@ -1,4 +1,4 @@
-﻿namespace CMS.Application.Models;
+﻿namespace CMS.Application.Models.Events;
 
 public class ProcessEventsArgs
 {

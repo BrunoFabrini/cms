@@ -1,4 +1,4 @@
-﻿using CMS.Application.Models;
+﻿using CMS.Application.Models.Events;
 using CMS.Application.Services;
 using CMS.Infrastructure.Options;
 using Microsoft.Extensions.DependencyInjection;

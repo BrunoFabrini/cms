@@ -1,11 +1,14 @@
 using CMS.Application.Features.CmsEvents;
 using CMS.Application.Services;
+using CMS.Infrastructure.Authentication;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace CMS.Api.Controllers;
 
 [ApiController]
-[Route("[controller]")]
+[Route("cms")]
+[Authorize(AuthenticationSchemes = AuthConstants.ServiceClient)]
 public class CmsController(
     IEventService eventService
 ) : ControllerBase

@@ -17,6 +17,8 @@ public static class InfrastructureExtensions
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddHttpContextAccessor();
+        services.AddAppAuthentication();
         services.AddOptions(configuration);
         services.AddInfrastructureServices();
         services.AddApplicationServices();
@@ -31,6 +33,9 @@ public static class InfrastructureExtensions
     {
         services.AddScoped<IEventService, EventService>();
         services.AddScoped<IContentManagementService, ContentManagementService>();
+        services.AddScoped<IContentQueryService, ContentQueryService>();
+        services.AddScoped<IContentAdministrationService, ContentAdministrationService>();
+        services.AddScoped<IAuthService, AuthService>();
 
         services.AddHostedService<EventConsumerBackgroundService>();
     }
@@ -38,6 +43,7 @@ public static class InfrastructureExtensions
     public static void AddOptions(this IServiceCollection services, IConfiguration configuration)
     {
         services.Configure<EventConsumerOptions>(configuration.GetSection(EventConsumerOptions.SectionName));
+        services.Configure<EventIngestionOptions>(configuration.GetSection(EventIngestionOptions.SectionName));
     }
 
     public static void AddInfrastructureServices(this IServiceCollection services)
@@ -73,5 +79,6 @@ public static class InfrastructureExtensions
         services.AddScoped<IEventReadRepository, EventReadRepository>();
         services.AddScoped<IEventWriteRepository, EventWriteRepository>();
         services.AddScoped<IContentRepository, ContentRepository>();
+        services.AddScoped<IContentReadRepository, ContentReadRepository>();
     }
 }

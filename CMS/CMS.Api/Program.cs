@@ -1,10 +1,12 @@
+using CMS.Api.Configs;
 using CMS.Infrastructure.DependencyInjection;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-
 builder.Services.AddOpenApi();
+
+builder.Services.AddAppCors();
 
 builder.Services
     .AddApplication(builder.Configuration)
@@ -18,9 +20,13 @@ if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
 }
+else
+{
+    app.UseHttpsRedirection();
+}
 
-app.UseHttpsRedirection();
-
+app.UseCors("Default");
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

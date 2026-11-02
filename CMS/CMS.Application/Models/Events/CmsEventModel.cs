@@ -1,9 +1,9 @@
 ﻿using CMS.Domain.Enums;
 using System.Text.Json.Serialization;
 
-namespace CMS.Application.Models;
+namespace CMS.Application.Models.Events;
 
-public class CmsEvent
+public class CmsEventModel
 {
     [JsonPropertyName("Id")]
     public string PublicId { get; set; } = null!;

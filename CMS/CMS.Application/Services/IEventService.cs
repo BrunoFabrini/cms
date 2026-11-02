@@ -1,5 +1,5 @@
 ﻿using CMS.Application.Features.CmsEvents;
-using CMS.Application.Models;
+using CMS.Application.Models.Events;
 using FluentResults;
 
 namespace CMS.Application.Services;

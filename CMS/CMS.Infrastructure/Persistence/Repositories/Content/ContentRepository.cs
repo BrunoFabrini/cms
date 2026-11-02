@@ -13,11 +13,27 @@ internal class ContentRepository(
 
     public async Task<Result<ContentEntity?>> GetContentByPublicIdAsync(string publicId, CancellationToken cancellationToken)
     {
-        var content = _dbContext.Contents
-            .Include(content => content.Versions)
-            .FirstOrDefault(content => content.PublicId == publicId);
+        var content = await _dbContext.Contents
+                .AsNoTracking()
+                .Include(content => content.Versions)
+                .FirstOrDefaultAsync(content => content.PublicId == publicId, cancellationToken);
 
         return Result.Ok(content);
+    }
+
+    public async Task<Result> DisableContentByPublicIdAsync(string publicId, CancellationToken cancellationToken)
+    {
+        var dbContent = await _dbContext.Contents
+                .FirstOrDefaultAsync(content => content.PublicId == publicId, cancellationToken);
+
+        if (dbContent is null)
+            return Result.Fail("Content not found.");
+
+        dbContent.Enabled = false;
+
+        var updateResult = await SaveAsync(dbContent, cancellationToken);
+
+        return Result.Ok();
     }
 
     public async Task<Result<ContentEntity>> SaveAsync(ContentEntity content, CancellationToken cancellationToken)
@@ -28,7 +44,6 @@ internal class ContentRepository(
             _dbContext.Contents.Update(content);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
-
         return Result.Ok(content);
     }
 
@@ -36,7 +51,6 @@ internal class ContentRepository(
     {
         _dbContext.Contents.Remove(content);
         await _dbContext.SaveChangesAsync(cancellationToken);
-
         return Result.Ok();
     }
 }

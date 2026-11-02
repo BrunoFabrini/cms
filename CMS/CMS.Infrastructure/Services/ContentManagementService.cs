@@ -1,4 +1,4 @@
-﻿using CMS.Application.Models;
+﻿using CMS.Application.Models.Events;
 using CMS.Application.Services;
 using CMS.Domain.Entities;
 using CMS.Domain.Enums;
@@ -18,7 +18,7 @@ public class ContentManagementService(
     private readonly IContentRepository _contentRepository = contentRepository;
     private readonly ILogger _logger = logger.ForContext<ContentManagementService>();
 
-    public async Task<Result> ExecuteContentChangeAsync(CmsEvent cmsEvent, CancellationToken cancellationToken)
+    public async Task<Result> ExecuteContentChangeAsync(CmsEventModel cmsEvent, CancellationToken cancellationToken)
     {
         var validationResult = await ValidateEvent(cmsEvent);
 
@@ -44,7 +44,7 @@ public class ContentManagementService(
         return Result.Ok();
     }
 
-    private static async Task<Result> ValidateEvent(CmsEvent cmsEvent)
+    private static async Task<Result> ValidateEvent(CmsEventModel cmsEvent)
     {
         var validationErrors = new List<IError>();
 
@@ -66,7 +66,7 @@ public class ContentManagementService(
         return Result.Ok();
     }
 
-    private async Task<Result> PublishContent(CmsEvent cmsEvent, ContentEntity? content, CancellationToken cancellationToken)
+    private async Task<Result> PublishContent(CmsEventModel cmsEvent, ContentEntity? content, CancellationToken cancellationToken)
     {
         if ((content is null || content.Versions.Count == 0) && cmsEvent.Version != 1)
             return Result.Fail("The first published content version must be 1.");
@@ -158,7 +158,7 @@ public class ContentManagementService(
         return Result.Ok();
     }
 
-    private async Task<Result> UnPublishContent(CmsEvent cmsEvent, ContentEntity? content, CancellationToken cancellationToken)
+    private async Task<Result> UnPublishContent(CmsEventModel cmsEvent, ContentEntity? content, CancellationToken cancellationToken)
     {
         if (content is null)
         {
@@ -190,7 +190,7 @@ public class ContentManagementService(
         return Result.Ok();
     }
 
-    private async Task<Result> DeleteContent(CmsEvent cmsEvent, ContentEntity? content, CancellationToken cancellationToken)
+    private async Task<Result> DeleteContent(CmsEventModel cmsEvent, ContentEntity? content, CancellationToken cancellationToken)
     {
         if (content is null)
         {

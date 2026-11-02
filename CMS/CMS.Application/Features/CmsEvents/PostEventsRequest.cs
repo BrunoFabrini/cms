@@ -1,7 +1,7 @@
-﻿using CMS.Application.Models;
+﻿using CMS.Application.Models.Events;
 
 namespace CMS.Application.Features.CmsEvents;
 
-public class PostEventsRequest : List<CmsEvent>
+public class PostEventsRequest : List<CmsEventModel>
 {
 }

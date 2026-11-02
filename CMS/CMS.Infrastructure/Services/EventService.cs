@@ -1,5 +1,5 @@
 ﻿using CMS.Application.Features.CmsEvents;
-using CMS.Application.Models;
+using CMS.Application.Models.Events;
 using CMS.Application.Services;
 using CMS.Domain.Entities;
 using CMS.Domain.Enums;
@@ -129,7 +129,7 @@ internal class EventService(
         {
             _logger.Information("Processing event with ID: {EventId}", eventEntity.Id);
 
-            var cmsEvent = JsonSerializer.Deserialize<CmsEvent>(
+            var cmsEvent = JsonSerializer.Deserialize<CmsEventModel>(
                 eventEntity.Payload,
                 JsonConfigs.Default);
 
