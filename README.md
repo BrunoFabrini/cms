@@ -1,4 +1,4 @@
-# cms
+# CMS - Content Management System
 
 ## Overview
 
